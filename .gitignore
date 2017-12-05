@@ -53,7 +53,7 @@ dkms.conf
 
 *
 
-!moshpyt.c
+!moshpyt*
 !README.md
 !LICENSE
 
