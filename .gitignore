@@ -50,3 +50,10 @@ modules.order
 Module.symvers
 Mkfile.old
 dkms.conf
+
+*
+
+!moshpyt.c
+!README.md
+!LICENSE
+
