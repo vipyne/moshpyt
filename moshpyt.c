@@ -19,12 +19,12 @@
  * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
- */  // / / / /// this one I think
+ */
 
 #include <libavutil/timestamp.h>
 #include <libavutil/motion_vector.h>
 #include <libavformat/avformat.h>
-// #include <libavfilter/vf_codecview.h>
+// #include <libavfilter/vf_codecview.h> // TODO: find this file
 
 static AVFormatContext *fmt_ctx = NULL;
 static AVCodecContext *video_dec_ctx = NULL;
@@ -40,9 +40,7 @@ static int image_video_stream_idx = -1;
 static AVFrame *frame = NULL;
 static AVFrame *out_frame = NULL;
 static AVFrame *img_frame = NULL;
-// static AVPacket vec_pkt;
 static int video_frame_count = 0;
-
 
 static void draw_line(uint8_t *buf, int sx, int sy, int ex, int ey,
                       int w, int h, int stride, int color)
@@ -141,7 +139,6 @@ static int decode_packet(int *got_frame,
   AVPacket *write_to_pkt) {
   int decoded = vec_pkt->size;
 
-  // printf("$ $ $ decode_packet vec_pkt->size :: %d\n", vec_pkt->size);
   *got_frame = 0;
   *img_got_frame = 0;
 
@@ -158,21 +155,14 @@ static int decode_packet(int *got_frame,
       int i;
       AVFrameSideData *sd;
       AVFrameSideData *img_sd;
-      // AVMotionVector *img_mvs;
-      // AVMotionVector *mvs;
 
       video_frame_count++;
       sd = av_frame_get_side_data(img_frame, AV_FRAME_DATA_MOTION_VECTORS);
-      // printf("sidedata       %d \n", sd);
       if (sd) {
 
         AVMotionVector *mvs = (AVMotionVector *)sd->data;
         AVMotionVector *img_mvs = (AVMotionVector *)img_frame->side_data[0]->data;
 
-        // const int is_iframe = (s->frame_type & FRAME_TYPE_I) && frame->pict_type == AV_PICTURE_TYPE_I;
-        // const int is_pframe = (s->frame_type & FRAME_TYPE_P) && frame->pict_type == AV_PICTURE_TYPE_P;
-        // const int is_bframe = (s->frame_type & FRAME_TYPE_B) && frame->pict_type == AV_PICTURE_TYPE_B;
-        // avcodec_open2_encode_packet
         for (i = 0; i < sd->size / sizeof(*mvs); i++) {
           AVMotionVector *mv = &mvs[i];
           AVMotionVector *img_mv = &img_mvs[i];
@@ -198,7 +188,7 @@ static int decode_packet(int *got_frame,
                   img_frame->linesize[0] = frame->linesize[0];
               // );
 
-                  img_frame->data[0] += 1;
+                  img_frame->data[0] += 2;
 
 
         // } else if (s->mv)
@@ -214,16 +204,11 @@ static int decode_packet(int *got_frame,
       } else {
           printf(".\n");
       }
-
-      // interleave_packet(AVFormatContext *s, AVPacket *out, AVPacket *in, int flush)
-      // interleave_packet(ofmt_ctx, &img_pkt, &img_pkt, 0);
     }
   }
-  // printf("$ $ $ decode_packet decoded       :: %d\n", decoded);
-  // write_to_pkt = img_pkt;
-          write_to_pkt = img_pkt;
-        av_interleaved_write_frame(ofmt_ctx, write_to_pkt); /////////////////////
-        printf("I\n");
+  write_to_pkt = img_pkt;
+  av_interleaved_write_frame(ofmt_ctx, write_to_pkt); /////////////////////
+  printf("I\n");
   return decoded;
 }
 
@@ -311,7 +296,6 @@ int main(int argc, char **argv) {
     exit(1);
   }
 
-    printf("hi\n");
   if (open_codec_context(&image_video_stream_idx, img_fmt_ctx, AVMEDIA_TYPE_VIDEO) >= 0) {
     image_video_stream = img_fmt_ctx->streams[image_video_stream_idx];
     image_video_dec_ctx = image_video_stream->codec;
@@ -399,7 +383,6 @@ int main(int argc, char **argv) {
     AVStream *in_stream, *out_stream;
 
     do {
-      // frame = get_video_frame(ofmt_ctx);
       got_frame = 0;
       img_got_frame = 0;
 
@@ -409,31 +392,16 @@ int main(int argc, char **argv) {
 
       write_to_pkt = vec_pkt; ///////////////////////////////////////////////////////////////
       av_interleaved_write_frame(ofmt_ctx, &write_to_pkt); /////////////////////
-      printf("O\n");
 
-      // ret = avcodec_encode_video2(ofmt_ctx->enc, &pkt, frame, &got_packet);
-
-      // write_frame(ofmt_ctx, &ofmt_ctx->enc->time_base, ofmt_ctx->streams, &write_to_pkt);
-
-      // printf("ret         :: %d\n", ret);
       if (ret < 0)
           break;
       vec_pkt.data += ret;
       vec_pkt.size -= ret;
     } while ( (vec_pkt.size > 0) && (0 != ret));
-      // printf("i bet this will be last print statement\n");
-
-      // av_packet_unref(&vec_pkt);
-      // printf("what about here\n");
   }
-  printf("do we ever even get herreeee???????????????????????????????????????????????????????????????????????\n");
   /* flush cached frames */
   write_to_pkt.data = NULL;
   write_to_pkt.size = 0;
-  // do {
-  //     decode_packet(&got_frame, 1, &vec_pkt, &img_pkt, ofmt_ctx, &img_got_frame, &write_to_pkt);
-  //     printf("oh shit we get stuck down here don't we\n");
-  // } while (got_frame);
   av_write_trailer(ofmt_ctx); /////////////////
 
   end:
