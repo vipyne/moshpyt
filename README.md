@@ -34,4 +34,3 @@ $ gcc moshpyt.c -L/usr/local/Cellar/ffmpeg/3.1.5/lib -lavdevice -lavformat -lavf
 
 $ ./moshthese ~/Movies/bobble_vector.mov ~/Movies/image.mov ~/desktop/moshpyt.mov
 ```
->>>>>>> cleanup to make it easier to come back to next time
