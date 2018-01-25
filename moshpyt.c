@@ -24,7 +24,6 @@
 #include <libavutil/timestamp.h>
 #include <libavutil/motion_vector.h>
 #include <libavformat/avformat.h>
-// #include <libavfilter/vf_codecview.h> // TODO: find this file
 
 static AVFormatContext *fmt_ctx = NULL;
 static AVCodecContext *video_dec_ctx = NULL;
@@ -190,7 +189,6 @@ static int decode_packet(int *got_frame,
 
                   img_frame->data[0] += 2;
 
-
         // } else if (s->mv)
                   // DRAW ARROW FUNCTION
         //     if ((direction == 0 && (s->mv & MV_P_FOR)  && frame->pict_type == AV_PICTURE_TYPE_P) ||
@@ -207,7 +205,7 @@ static int decode_packet(int *got_frame,
     }
   }
   write_to_pkt = img_pkt;
-  av_interleaved_write_frame(ofmt_ctx, write_to_pkt); /////////////////////
+  av_interleaved_write_frame(ofmt_ctx, write_to_pkt);
   printf("I\n");
   return decoded;
 }
@@ -285,7 +283,6 @@ int main(int argc, char **argv) {
 
   av_dump_format(fmt_ctx, 0, vector_src_filename, 0);
 
-/////////////////////////   /////////////////////
   if (avformat_open_input(&img_fmt_ctx, image_src_filename, NULL, NULL) < 0) {
     fprintf(stderr, "Could not open source file %s\n", image_src_filename);
     exit(1);
@@ -303,19 +300,12 @@ int main(int argc, char **argv) {
 
   // av_dump_format last arg 0 for input, 1 for output
   av_dump_format(img_fmt_ctx, 0, image_src_filename, 0);
-/////////////////////////   /////////////////////
-
-
-
 
   if (!video_stream) {
     fprintf(stderr, "Could not find video stream in the input, aborting\n");
     ret = 1;
     goto end;
   }
-
-  // frame = av_frame_alloc(); ////////// ??
-
 
   avformat_alloc_output_context2(&ofmt_ctx, NULL, NULL, output_filename);
   if (!ofmt_ctx) {
@@ -326,7 +316,6 @@ int main(int argc, char **argv) {
 
   ofmt = ofmt_ctx->oformat;
 
-  //////////////////
   AVStream *in_stream = fmt_ctx->streams[0];
   AVStream *out_stream = avformat_new_stream(ofmt_ctx, in_stream->codec->codec);
   if (!out_stream) {
@@ -345,7 +334,6 @@ int main(int argc, char **argv) {
       out_stream->codec->flags |= AV_CODEC_FLAG_GLOBAL_HEADER;
 
   av_dump_format(ofmt_ctx, 0, output_filename, 1);
-  //////////////////
 
   if (!(ofmt->flags & AVFMT_NOFILE)) {
     ret = avio_open(&ofmt_ctx->pb, output_filename, AVIO_FLAG_WRITE);
@@ -355,15 +343,15 @@ int main(int argc, char **argv) {
     }
   }
 
-  int header_written = avformat_write_header(ofmt_ctx, NULL); ///////////
+  int header_written = avformat_write_header(ofmt_ctx, NULL);
 
   if (header_written < 0) {
     fprintf(stderr, "who knows why header wasn't written: \n");
     fprintf(stderr, "Error occurred when opening output file\n");
   }
 
-  frame = av_frame_alloc(); //////////
-  img_frame = av_frame_alloc(); //////////
+  frame = av_frame_alloc();
+  img_frame = av_frame_alloc();
   if (!frame || !img_frame) {
     fprintf(stderr, "Could not allocate frame\n");
     ret = AVERROR(ENOMEM);
@@ -390,8 +378,8 @@ int main(int argc, char **argv) {
       out_stream = ofmt_ctx->streams[vec_pkt.stream_index];
       ret = decode_packet(&got_frame, 0, &vec_pkt, &img_pkt, ofmt_ctx, &img_got_frame, &write_to_pkt);
 
-      write_to_pkt = vec_pkt; ///////////////////////////////////////////////////////////////
-      av_interleaved_write_frame(ofmt_ctx, &write_to_pkt); /////////////////////
+      write_to_pkt = vec_pkt;
+      av_interleaved_write_frame(ofmt_ctx, &write_to_pkt);
 
       if (ret < 0)
           break;
@@ -402,7 +390,7 @@ int main(int argc, char **argv) {
   /* flush cached frames */
   write_to_pkt.data = NULL;
   write_to_pkt.size = 0;
-  av_write_trailer(ofmt_ctx); /////////////////
+  av_write_trailer(ofmt_ctx);
 
   end:
     avcodec_close(video_dec_ctx);
