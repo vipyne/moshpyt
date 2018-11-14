@@ -11,7 +11,16 @@ Usage (broken, don't even try, you will just be sad and frustrated)
 ===
 
 ```sh
-$ gcc moshpyt.c -L/usr/local/Cellar/ffmpeg/3.1.5/lib -lavdevice -lavformat -lavfilter -lavcodec -lswresample -lswscale -lavutil  -o moshpyt
+$ gcc moshpyt.c \
+-L/usr/local/Cellar/ffmpeg/3.1.5/lib \
+-lavdevice \
+-lavformat \
+-lavfilter \
+-lavcodec \
+-lswresample \
+-lswscale \
+-lavutil \
+-o moshpyt
 
 $ moshpyt motion_vectors.mov image.mov output_video.mov
 ```
@@ -30,7 +39,16 @@ with these libs:
 ----------
 
 ```sh
-$ gcc moshpyt.c -L/usr/local/Cellar/ffmpeg/3.1.5/lib -lavdevice -lavformat -lavfilter -lavcodec -lswresample -lswscale -lavutil -o moshthese
+$ gcc moshpyt.c \
+-L/usr/local/Cellar/ffmpeg/3.1.5/lib \
+-lavdevice \
+-lavformat \
+-lavfilter \
+-lavcodec \
+-lswresample \
+-lswscale \
+-lavutil \
+-o moshthese
 
 $ ./moshthese ~/Movies/bobble_vector.mov ~/Movies/image.mov ~/desktop/moshpyt.mov
 ```
