@@ -1,5 +1,4 @@
-moshpyt
-====
+# moshpyt
 
 this is the early beginnings of a CLI to [datamosh](http://datamoshing.com/) videos.  heavily under construction.
 
@@ -7,8 +6,7 @@ something, something ffmpeg
 
 ![](https://github.com/vipyne/moshpyt/blob/master/moshpyt_readme.gif)
 
-Usage (broken, don't even try, you will just be sad and frustrated)
-===
+#### Usage (broken, don't even try, you will just be sad and frustrated)
 
 ```sh
 $ gcc moshpyt.c \
@@ -52,5 +50,5 @@ $ gcc moshpyt.c \
 -lavutil \
 -o moshthese
 
-$ ./moshthese ~/Movies/bobble_vector.mov ~/Movies/image.mov ~/desktop/moshpyt.mov
+$ ./moshthese ~/Movies/bobble_vector.mov ~/Movies/image.mov ~/desktop/moshpyt$(date +%s).mov
 ```
