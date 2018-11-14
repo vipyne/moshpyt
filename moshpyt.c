@@ -41,94 +41,6 @@ static AVFrame *out_frame = NULL;
 static AVFrame *img_frame = NULL;
 static int video_frame_count = 0;
 
-static void draw_line(uint8_t *buf, int sx, int sy, int ex, int ey,
-                      int w, int h, int stride, int color)
-{
-    int x, y, fr, f;
-
-    if (clip_line(&sx, &sy, &ex, &ey, w - 1))
-        return;
-    if (clip_line(&sy, &sx, &ey, &ex, h - 1))
-        return;
-
-    sx = av_clip(sx, 0, w - 1);
-    sy = av_clip(sy, 0, h - 1);
-    ex = av_clip(ex, 0, w - 1);
-    ey = av_clip(ey, 0, h - 1);
-
-    buf[sy * stride + sx] += color;
-
-    if (FFABS(ex - sx) > FFABS(ey - sy)) {
-        if (sx > ex) {
-            FFSWAP(int, sx, ex);
-            FFSWAP(int, sy, ey);
-        }
-        buf += sx + sy * stride;
-        ex  -= sx;
-        f    = ((ey - sy) << 16) / ex;
-        for (x = 0; x <= ex; x++) {
-            y  = (x * f) >> 16;
-            fr = (x * f) & 0xFFFF;
-                   buf[ y      * stride + x] += (color * (0x10000 - fr)) >> 16;
-            if(fr) buf[(y + 1) * stride + x] += (color *            fr ) >> 16;
-        }
-    } else {
-        if (sy > ey) {
-            FFSWAP(int, sx, ex);
-            FFSWAP(int, sy, ey);
-        }
-        buf += sx + sy * stride;
-        ey  -= sy;
-        if (ey)
-            f = ((ex - sx) << 16) / ey;
-        else
-            f = 0;
-        for(y= 0; y <= ey; y++){
-            x  = (y*f) >> 16;
-            fr = (y*f) & 0xFFFF;
-                   buf[y * stride + x    ] += (color * (0x10000 - fr)) >> 16;
-            if(fr) buf[y * stride + x + 1] += (color *            fr ) >> 16;
-        }
-    }
-}
-static void draw_arrow(uint8_t *buf, int sx, int sy, int ex,
-                       int ey, int w, int h, int stride, int color, int tail, int direction)
-{
-  int dx,dy;
-
-  if (direction) {
-    FFSWAP(int, sx, ex);
-    FFSWAP(int, sy, ey);
-  }
-
-  sx = av_clip(sx, -100, w + 100);
-  sy = av_clip(sy, -100, h + 100);
-  ex = av_clip(ex, -100, w + 100);
-  ey = av_clip(ey, -100, h + 100);
-
-  dx = ex - sx;
-  dy = ey - sy;
-
-  if (dx * dx + dy * dy > 3 * 3) {
-    int rx =  dx + dy;
-    int ry = -dx + dy;
-    int length = sqrt((rx * rx + ry * ry) << 8);
-
-    // FIXME subpixel accuracy
-    rx = ROUNDED_DIV(rx * 3 << 4, length);
-    ry = ROUNDED_DIV(ry * 3 << 4, length);
-
-    if (tail) {
-      rx = -rx;
-      ry = -ry;
-    }
-
-    draw_line(buf, sx, sy, sx + rx, sy + ry, w, h, stride, color);
-    draw_line(buf, sx, sy, sx - ry, sy + rx, w, h, stride, color);
-  }
-  draw_line(buf, sx, sy, ex, ey, w, h, stride, color);
-}
-
 static int decode_packet(int *got_frame,
   int cached,
   AVPacket *vec_pkt,
@@ -165,38 +77,17 @@ static int decode_packet(int *got_frame,
         for (i = 0; i < sd->size / sizeof(*mvs); i++) {
           AVMotionVector *mv = &mvs[i];
           AVMotionVector *img_mv = &img_mvs[i];
-          // const int direction = mv->source > 0;
 
-          // if (s->mv_type) {
-            // const int is_fp = direction == 0 && (s->mv_type & MV_TYPE_FOR);
-            // const int is_bp = direction == 1 && (s->mv_type & MV_TYPE_BACK);
+          img_frame->data[0] = frame->data[0];
+          img_mv->dst_x = mv->dst_x;
+          img_mv->dst_y = mv->dst_y;
+          img_mv->src_x = mv->src_x;
+          img_mv->src_y = mv->src_y;
+          img_frame->width = frame->width;
+          img_frame->height = frame->height;
+          img_frame->linesize[0] = frame->linesize[0];
 
-            // if ((!s->frame_type && (is_fp || is_bp)) ||
-            //     is_iframe && is_fp || is_iframe && is_bp ||
-            //     is_pframe && is_fp ||
-            //     is_bframe && is_fp || is_bframe && is_bp)
-
-              // draw_arrow(
-                  img_frame->data[0] = frame->data[0];
-                  img_mv->dst_x = mv->dst_x;
-                  img_mv->dst_y = mv->dst_y;
-                  img_mv->src_x = mv->src_x;
-                  img_mv->src_y = mv->src_y;
-                  img_frame->width = frame->width;
-                  img_frame->height = frame->height;
-                  img_frame->linesize[0] = frame->linesize[0];
-              // );
-
-                  img_frame->data[0] += 2;
-
-        // } else if (s->mv)
-                  // DRAW ARROW FUNCTION
-        //     if ((direction == 0 && (s->mv & MV_P_FOR)  && frame->pict_type == AV_PICTURE_TYPE_P) ||
-        //         (direction == 0 && (s->mv & MV_B_FOR)  && frame->pict_type == AV_PICTURE_TYPE_B) ||
-        //         (direction == 1 && (s->mv & MV_B_BACK) && frame->pict_type == AV_PICTURE_TYPE_B))
-        //         draw_arrow(frame->data[0], mv->dst_x, mv->dst_y, mv->src_x, mv->src_y,
-        //                     frame->width, frame->height, frame->linesize[0],
-        //                     100, 0, direction);
+          img_frame->data[0] += 2;
         }
 
       } else {
@@ -266,83 +157,110 @@ int main(int argc, char **argv) {
 
   av_register_all();
 
-  if (avformat_open_input(&fmt_ctx, vector_src_filename, NULL, NULL) < 0) {
-    fprintf(stderr, "Could not open source file %s\n", vector_src_filename);
-    exit(1);
-  }
+  // vector video
+  {
+    if (avformat_open_input(&fmt_ctx, vector_src_filename, NULL, NULL) < 0) {
+      fprintf(stderr, "Could not open source file %s\n", vector_src_filename);
+      exit(1);
+    }
 
-  if (avformat_find_stream_info(fmt_ctx, NULL) < 0) {
-    fprintf(stderr, "Could not find stream information\n");
-    exit(1);
-  }
+    if (avformat_find_stream_info(fmt_ctx, NULL) < 0) {
+      fprintf(stderr, "Could not find stream information\n");
+      exit(1);
+    }
 
-  if (open_codec_context(&video_stream_idx, fmt_ctx, AVMEDIA_TYPE_VIDEO) >= 0) {
-    video_stream = fmt_ctx->streams[video_stream_idx];
-    video_dec_ctx = video_stream->codec;
-  }
+    // open codec context for video stream
+    if (open_codec_context(&video_stream_idx, fmt_ctx, AVMEDIA_TYPE_VIDEO) >= 0) {
+      video_stream = fmt_ctx->streams[video_stream_idx];
+      video_dec_ctx = video_stream->codec;
+    }
 
-  av_dump_format(fmt_ctx, 0, vector_src_filename, 0);
-
-  if (avformat_open_input(&img_fmt_ctx, image_src_filename, NULL, NULL) < 0) {
-    fprintf(stderr, "Could not open source file %s\n", image_src_filename);
-    exit(1);
-  }
-
-  if (avformat_find_stream_info(img_fmt_ctx, NULL) < 0) {
-    fprintf(stderr, "Could not find stream information\n");
-    exit(1);
-  }
-
-  if (open_codec_context(&image_video_stream_idx, img_fmt_ctx, AVMEDIA_TYPE_VIDEO) >= 0) {
-    image_video_stream = img_fmt_ctx->streams[image_video_stream_idx];
-    image_video_dec_ctx = image_video_stream->codec;
-  }
-
-  // av_dump_format last arg 0 for input, 1 for output
-  av_dump_format(img_fmt_ctx, 0, image_src_filename, 0);
-
-  if (!video_stream) {
-    fprintf(stderr, "Could not find video stream in the input, aborting\n");
-    ret = 1;
-    goto end;
-  }
-
-  avformat_alloc_output_context2(&ofmt_ctx, NULL, NULL, output_filename);
-  if (!ofmt_ctx) {
-    fprintf(stderr, "Could not create output context\n");
-    ret = AVERROR_UNKNOWN;
-    goto end;
-  }
-
-  ofmt = ofmt_ctx->oformat;
-
-  AVStream *in_stream = fmt_ctx->streams[0];
-  AVStream *out_stream = avformat_new_stream(ofmt_ctx, in_stream->codec->codec);
-  if (!out_stream) {
-    fprintf(stderr, "Failed allocating output stream\n");
-    ret = AVERROR_UNKNOWN;
-    goto end;
-  }
-
-  ret = avcodec_copy_context(out_stream->codec, in_stream->codec);
-  if (ret < 0) {
-    fprintf(stderr, "Failed to copy context from input to output stream codec context\n");
-    goto end;
-  }
-  out_stream->codec->codec_tag = 0;
-  if (ofmt_ctx->oformat->flags & AVFMT_GLOBALHEADER)
-      out_stream->codec->flags |= AV_CODEC_FLAG_GLOBAL_HEADER;
-
-  av_dump_format(ofmt_ctx, 0, output_filename, 1);
-
-  if (!(ofmt->flags & AVFMT_NOFILE)) {
-    ret = avio_open(&ofmt_ctx->pb, output_filename, AVIO_FLAG_WRITE);
-    if (ret < 0) {
-      fprintf(stderr, "Could not open output file '%s'", output_filename);
+    if (!video_stream) {
+      fprintf(stderr, "Could not find video stream in the input, aborting\n");
+      ret = 1;
       goto end;
+    }
+
+    // av_dump_format last arg 0 for input, 1 for output
+    // av_dump_format vector_src_filename
+    av_dump_format(fmt_ctx, 0, vector_src_filename, 0);
+  }
+
+  // image video
+  {
+    if (avformat_open_input(&img_fmt_ctx, image_src_filename, NULL, NULL) < 0) {
+      fprintf(stderr, "Could not open source file %s\n", image_src_filename);
+      exit(1);
+    }
+
+    if (avformat_find_stream_info(img_fmt_ctx, NULL) < 0) {
+      fprintf(stderr, "Could not find stream information\n");
+      exit(1);
+    }
+
+    // open codec context for image video stream
+    if (open_codec_context(&image_video_stream_idx, img_fmt_ctx, AVMEDIA_TYPE_VIDEO) >= 0) {
+      image_video_stream = img_fmt_ctx->streams[image_video_stream_idx];
+      image_video_dec_ctx = image_video_stream->codec;
+    }
+
+    if (!image_video_stream) {
+      fprintf(stderr, "Could not find image video stream in the input, aborting\n");
+      ret = 1;
+      goto end;
+    }
+
+    // av_dump_format last arg 0 for input, 1 for output
+    // av_dump_format image_src_filename
+    av_dump_format(img_fmt_ctx, 0, image_src_filename, 0);
+  }
+
+  // output video
+  {
+    avformat_alloc_output_context2(&ofmt_ctx, NULL, NULL, output_filename);
+
+    if (!ofmt_ctx) {
+      fprintf(stderr, "Could not create output context\n");
+      ret = AVERROR_UNKNOWN;
+      goto end;
+    }
+
+    ofmt = ofmt_ctx->oformat;
+
+    AVStream *in_stream = fmt_ctx->streams[0];
+    AVStream *out_stream = avformat_new_stream(ofmt_ctx, in_stream->codec->codec);
+    if (!out_stream) {
+      fprintf(stderr, "Failed allocating output stream\n");
+      ret = AVERROR_UNKNOWN;
+      goto end;
+    }
+
+    ret = avcodec_copy_context(out_stream->codec, in_stream->codec);
+
+    if (ret < 0) {
+      fprintf(stderr, "Failed to copy context from input to output stream codec context\n");
+      goto end;
+    }
+
+    out_stream->codec->codec_tag = 0;
+
+    if (ofmt_ctx->oformat->flags & AVFMT_GLOBALHEADER)
+        out_stream->codec->flags |= AV_CODEC_FLAG_GLOBAL_HEADER;
+
+    // av_dump_format last arg 0 for input, 1 for output
+    // av_dump_format output_filename
+    av_dump_format(ofmt_ctx, 0, output_filename, 1);
+
+    if (!(ofmt->flags & AVFMT_NOFILE)) {
+      ret = avio_open(&ofmt_ctx->pb, output_filename, AVIO_FLAG_WRITE);
+      if (ret < 0) {
+        fprintf(stderr, "Could not open output file '%s'", output_filename);
+        goto end;
+      }
     }
   }
 
+  // write header
   int header_written = avformat_write_header(ofmt_ctx, NULL);
 
   if (header_written < 0) {
@@ -358,14 +276,14 @@ int main(int argc, char **argv) {
     goto end;
   }
 
-  /* initialize packet, set data to NULL, let the demuxer fill it */
+  // initialize packet, set data to NULL, let the demuxer fill it
   av_init_packet(&write_to_pkt);
   write_to_pkt.data = NULL;
   write_to_pkt.size = 0;
 
   int img_got_frame;
 
-  /* read frames from the file */
+  // read frames from the import "vector" video file
   while (av_read_frame(fmt_ctx, &vec_pkt) >= 0) {
     av_read_frame(img_fmt_ctx, &img_pkt);
     AVStream *in_stream, *out_stream;
@@ -387,7 +305,8 @@ int main(int argc, char **argv) {
       vec_pkt.size -= ret;
     } while ( (vec_pkt.size > 0) && (0 != ret));
   }
-  /* flush cached frames */
+
+  // flush cached frames
   write_to_pkt.data = NULL;
   write_to_pkt.size = 0;
   av_write_trailer(ofmt_ctx);
