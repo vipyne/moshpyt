@@ -6,19 +6,11 @@ something, something ffmpeg
 
 ![](https://github.com/vipyne/moshpyt/blob/master/moshpyt_readme.gif)
 
-#### Usage (broken, don't even try, you will just be sad and frustrated)
+#### Usage (works 12% of the time)
+- need better timecode handling probably
 
 ```sh
-$ gcc moshpyt.c \
--L/usr/local/Cellar/ffmpeg/3.1.5/lib \
--lavdevice \
--lavformat \
--lavfilter \
--lavcodec \
--lswresample \
--lswscale \
--lavutil \
--o moshpyt
+$ make mosh
 
 $ moshpyt motion_vectors.mov image.mov output_video.mov
 ```
