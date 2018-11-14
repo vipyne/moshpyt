@@ -47,7 +47,8 @@ static int decode_packet(int *got_frame,
   AVPacket *img_pkt,
   AVFormatContext *ofmt_ctx,
   int *img_got_frame,
-  AVPacket *write_to_pkt) {
+  AVPacket *write_to_pkt)
+{
   int decoded = vec_pkt->size;
 
   *got_frame = 0;
@@ -97,7 +98,7 @@ static int decode_packet(int *got_frame,
   }
   write_to_pkt = img_pkt;
   av_interleaved_write_frame(ofmt_ctx, write_to_pkt);
-  printf("I\n");
+  printf("decoded__ %d\n", decoded);
   return decoded;
 }
 
@@ -285,6 +286,7 @@ int main(int argc, char **argv) {
 
   // read frames from the import "vector" video file
   while (av_read_frame(fmt_ctx, &vec_pkt) >= 0) {
+
     av_read_frame(img_fmt_ctx, &img_pkt);
     AVStream *in_stream, *out_stream;
 
@@ -304,6 +306,7 @@ int main(int argc, char **argv) {
       vec_pkt.data += ret;
       vec_pkt.size -= ret;
     } while ( (vec_pkt.size > 0) && (0 != ret));
+
   }
 
   // flush cached frames
