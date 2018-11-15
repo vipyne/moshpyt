@@ -297,9 +297,12 @@ int main(int argc, char **argv) {
       in_stream  = fmt_ctx->streams[vec_pkt.stream_index];
       out_stream = ofmt_ctx->streams[vec_pkt.stream_index];
       ret = decode_packet(&got_frame, 0, &vec_pkt, &img_pkt, ofmt_ctx, &img_got_frame, &write_to_pkt);
+      // avcode_send_packet(img_fmt_ctx, &write_to_pkt);  <--- use this API send_frame etc
+      // https://www.ffmpeg.org/doxygen/trunk/group__lavc__encdec.html
 
       write_to_pkt = vec_pkt;
       av_interleaved_write_frame(ofmt_ctx, &write_to_pkt);
+
 
       if (ret < 0)
           break;
