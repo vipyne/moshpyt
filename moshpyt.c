@@ -284,10 +284,10 @@ int main(int argc, char **argv) {
 
   int img_got_frame;
 
+    av_read_frame(img_fmt_ctx, &img_pkt);
   // read frames from the import "vector" video file
   while (av_read_frame(fmt_ctx, &vec_pkt) >= 0) {
 
-    av_read_frame(img_fmt_ctx, &img_pkt);
     AVStream *in_stream, *out_stream;
 
     do {
