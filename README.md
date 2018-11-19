@@ -31,6 +31,10 @@ with these libs:
 ----------
 
 ```sh
+make mosh2 && ./moshthese2 ~/Movies/dance.mp4 ~/Movies/silliness.mp4 out.mp4
+```
+
+```sh
 $ gcc moshpyt.c \
 -L/usr/local/Cellar/ffmpeg/3.1.5/lib \
 -lavdevice \
