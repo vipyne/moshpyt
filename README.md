@@ -17,7 +17,7 @@ $ moshpyt motion_vectors.mov image.mov output_video.mov
 
 ffmpeg stuff needed:
 
-`-L/usr/local/Cellar/ffmpeg/3.1.5/lib`  # your path to ffmpeg 3.1.5 / 3.4.1
+`-L/usr/local/Cellar/ffmpeg/3.1.5/lib`  # your path to ffmpeg 3.1.5 / 3.4.1 / 4.1
 
 with these libs:
 - `lavdevice`
@@ -31,7 +31,7 @@ with these libs:
 ----------
 
 ```sh
-make mosh2 && ./moshthese2 ~/Movies/dance.mp4 ~/Movies/silliness.mp4 out.mp4
+make mosh2 && ./moshthese2 ~/Movies/dance.mp4 ~/Movies/silliness.mp4 out$(date +%s).mp4
 ```
 
 ```sh

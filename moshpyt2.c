@@ -7,6 +7,7 @@
 
 #include <libavcodec/avcodec.h>
 #include <libavformat/avformat.h>
+#include <libavutil/motion_vector.h>
 // #include <ffmpeg/swscale.h> /////////
 
 static const char *vector_src_filename = NULL;
@@ -162,14 +163,18 @@ int main(int argc, char *argv[])
   ////////////////////////////////////
 
   ////////////// OUTPUT //////////////
-  // AVFrame *vector_frame = NULL;
-  // vector_frame = av_frame_alloc();
+  AVFrame *vector_frame = NULL;
+  vector_frame = av_frame_alloc();
   AVFormatContext *output_format_ctx = NULL;
   avformat_alloc_output_context2(&output_format_ctx, NULL, NULL, output_filename);
   AVStream *in_stream = vector_format_ctx->streams[0];
   AVStream *out_stream = avformat_new_stream(output_format_ctx, in_stream->codec->codec);
   avcodec_copy_context(out_stream->codec, in_stream->codec);
   avio_open(&output_format_ctx->pb, output_filename, AVIO_FLAG_WRITE);
+
+  AVFormatContext *narf = output_format_ctx->oformat;
+
+  av_dump_format(output_format_ctx, 0, output_filename, 1);
 
   // write file header
   int header_written = avformat_write_header(output_format_ctx, NULL);
@@ -181,35 +186,89 @@ int main(int argc, char *argv[])
   AVPacket vector_pkt;
   AVPacket image_pkt;
   AVPacket write_to_pkt;
-  av_init_packet(&write_to_pkt);
   av_init_packet(&vector_pkt);
+  av_init_packet(&image_pkt);
+  av_init_packet(&write_to_pkt);
   write_to_pkt.data = NULL;
   write_to_pkt.size = 0;
   int vector_ret = 0;
   int image_ret = 0;
 
+  vector_codec_context->max_b_frames = 999999;
+  vector_codec_context->gop_size = 70;
+  vector_codec_context->bit_rate = 500000;
+
+  image_ret = av_read_frame(image_format_ctx, &image_pkt);
+
   while (1)
   {
     vector_ret = av_read_frame(vector_format_ctx, &vector_pkt);
-    image_ret = av_read_frame(image_format_ctx, &image_pkt);
-    // if (0 > vector_ret)
+    if (0 > vector_ret)
+      break;
     if (0 > image_ret)
       break;
 
-    /////////// under construction ///////////
-    // av_copy_packet_side_data(&vector_pkt, &image_pkt);
-    size_t some_size = 26355;
-    // uint8_t *vector_side_data = av_malloc();
-    uint8_t *vector_side_data = av_packet_get_side_data(&vector_pkt, AV_FRAME_DATA_MOTION_VECTORS, NULL);
-    if (NULL == vector_side_data)
-    {
-      printf("nulllllllll\n");
-    }
-    av_packet_add_side_data(&image_pkt, AV_FRAME_DATA_MOTION_VECTORS, &vector_side_data, some_size);
-    // av_interleaved_write_frame(output_format_ctx, &image_pkt);
-    /////////// under construction ///////////
+    int decoded;
 
-    av_interleaved_write_frame(output_format_ctx, &vector_pkt);
+    do {
+      int ret = 0;
+      int got_frame = 0;
+
+      if (0 == vector_pkt.stream_index)
+      {
+        printf("herer\n");
+        decoded = vector_pkt.size;
+        printf("vector_pkt.size %d \n", vector_pkt.size);
+
+        ////// decode
+      // if (vector_pkt)
+      // {
+        ret = avcodec_send_packet(vector_format_ctx, &vector_pkt);
+        printf("ret - %d\n", ret);
+        if (0 > ret && AVERROR_EOF != 0)
+          ret = avcodec_send_packet(vector_format_ctx, &vector_pkt);
+      // }
+        ret = avcodec_receive_frame(vector_format_ctx, vector_frame);
+        // printf("ret\n");
+        // if (0 > ret && AVERROR(EAGAIN) != ret)
+        //   return ret;
+        // printf("ret. 222\n");
+        if (0 <= ret)
+          got_frame = 1;
+
+        /////////// under construction ///////////
+        // av_copy_packet_side_data(&vector_pkt, &image_pkt);
+        // uint8_t *vector_side_data = av_malloc();
+        if (got_frame)
+        {
+          printf("(got frame)\n");
+          AVFrameSideData *vector_side_data = av_packet_get_side_data(&vector_frame, AV_FRAME_DATA_MOTION_VECTORS, NULL);
+
+          if (vector_side_data)
+          {
+            printf("(got side data!!!)\n");
+            printf("side data size %d\n", vector_side_data->size);
+            AVMotionVector *mvs = (AVMotionVector *)vector_side_data->data;
+          }
+        }
+        // if (NULL != vector_side_data)
+          // printf("________nulllllllll\n");
+        // size_t some_size = 26355;
+        // av_packet_add_side_data(&image_pkt, AV_FRAME_DATA_MOTION_VECTORS, &vector_side_data, some_size);
+        // av_interleaved_write_frame(output_format_ctx, &image_pkt);
+        /////////// under construction ///////////
+        av_frame_unref(vector_frame);
+
+        av_interleaved_write_frame(output_format_ctx, &vector_pkt);
+
+        if (0 > decoded)
+          break;
+
+        printf("decoded %d \n", decoded);
+        vector_pkt.data += decoded;
+        vector_pkt.size -= decoded;
+      }
+    } while ((0 > vector_pkt.size) && (0 != decoded));
   }
   printf("\n");
 
@@ -223,8 +282,8 @@ int main(int argc, char *argv[])
   av_free_packet(&write_to_pkt);
   av_free_packet(&vector_pkt);
 
-  // // Free Frame
-  // av_free(vector_frame);
+  // Free Frame
+  av_free(vector_frame);
 
   // Close Codecs
   avcodec_close(vector_codec_context);
