@@ -19,11 +19,9 @@ int vp_error(char *message)
   return -1;
 }
 
-static void vp_encode(AVCodecContext *codec_ctx, AVFrame *fframe, AVPacket *pkt, FILE *outfile)
+static void vp_encode(AVCodecContext *codec_ctx, AVFrame *frame, AVPacket *pkt, FILE *outfile)
 {
   int ret;
-
-  AVFrame *frame = av_frame_alloc();
 
   ret = avcodec_send_frame(codec_ctx, frame);
   if (0 > ret)
@@ -56,6 +54,7 @@ static void vp_encode(AVCodecContext *codec_ctx, AVFrame *fframe, AVPacket *pkt,
     fwrite(pkt->data, 1, pkt->size, outfile);
     av_packet_unref(pkt);
   }
+  printf("(after while)\n");
 
 }
 
@@ -203,7 +202,7 @@ int main(int argc, char *argv[])
 
   FILE *output_file;
   AVPacket *output_pkt;
-  AVFrame *output_frame = av_frame_alloc();
+  AVFrame *output_frame;
   AVFormatContext *output_format_ctx = NULL;
   AVCodecContext *output_codec_ctx = NULL;
   avformat_alloc_output_context2(&output_format_ctx, NULL, NULL, output_filename);
@@ -221,8 +220,16 @@ int main(int argc, char *argv[])
   }
 
   AVCodec *output_codec;
-  output_codec = avcodec_find_decoder(AV_CODEC_ID_MPEG1VIDEO);
+  output_codec = avcodec_find_encoder(AV_CODEC_ID_MPEG1VIDEO);
+  if (!output_codec)
+  {
+    printf('no codec found\n');
+    exit(1);
+  }
+
   output_codec_ctx = avcodec_alloc_context3(output_codec);
+
+  output_frame = av_frame_alloc();
   output_pkt = av_packet_alloc();
 
   // // write file header
@@ -243,17 +250,23 @@ int main(int argc, char *argv[])
   output_codec_ctx->max_b_frames = 1;
   output_codec_ctx->pix_fmt = AV_PIX_FMT_YUV420P;
 
-  output_frame->format = output_codec_ctx->pix_fmt;
-  output_frame->width = output_codec_ctx->width;
-  output_frame->height = output_codec_ctx->height;
+  if (0 > avcodec_open2(output_codec_ctx, output_codec, NULL))
+  {
+    printf("could not open codec\n");
+    exit(1);
+  }
+
+  output_frame->format = AV_PIX_FMT_YUV420P;
+  output_frame->width = 1920;
+  output_frame->height = 1080;
 
   fb_ret = av_frame_get_buffer(output_frame, 32);
   if (0 > fb_ret)
   {
     printf("could not alloc frame data.\n");
   }
-  printf("narrrrrfffff____________________________________\n");
 
+  printf("narrrrrfffff____________________________________\n");
   for (i = 0; i < 25; i++)
   {
     fflush(stdout);
@@ -286,7 +299,9 @@ int main(int argc, char *argv[])
 
     output_frame->pts = i;
 
+    printf("before encode___\n");
     vp_encode(output_codec_ctx, output_frame, output_pkt, output_file);
+    printf("after encode___\n");
   }
 
   // while (1)
@@ -347,15 +362,22 @@ int main(int argc, char *argv[])
   printf("__________\n");
 
   vp_encode(output_codec_ctx, NULL, output_pkt, output_file);
+  printf("__________\n");
 
   uint8_t trailer[] = { 0, 0, 1, 0xb7 };
+  printf("__________\n");
   fwrite(trailer, 1, sizeof(trailer), output_file);
+  fclose(output_file);
+
+  avcodec_free_context(&output_codec_ctx);
+  av_frame_free(&output_frame);
+  av_packet_free(&output_pkt);
 
   // write_to_pkt.data = NULL;
   // write_to_pkt.size = 0;
 
-  // write file end
-  av_write_trailer(output_format_ctx);
+  // // write file end
+  // av_write_trailer(output_format_ctx);
 
   // // Free packets
   // av_free_packet(&write_to_pkt);
@@ -370,6 +392,7 @@ int main(int argc, char *argv[])
 
   // Close video file
   avformat_close_input(&vector_format_ctx);
+  avformat_close_input(&image_format_ctx);
 
   return 0;
 }
