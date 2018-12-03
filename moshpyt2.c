@@ -121,71 +121,71 @@ int main(int argc, char *argv[])
 
   // register all codecs
   av_register_all();
-
   ////////////////////////////////////   Motion vector src
+  FILE *vector_file;
   AVCodecContext *vector_codec_context = NULL;
   AVCodecContext *vector_codec_context_orig = NULL;
   AVCodec *vector_codec = NULL;
   AVFormatContext *vector_format_ctx = NULL;
-  {
-    // Open file
-    if (0 != avformat_open_input(&vector_format_ctx, vector_src_filename, NULL, 0))
-    {
-      printf("Could not open file: %s", vector_src_filename);
-      return -1;
-    }
+  // {
+  //   // Open file
+  //   if (0 != avformat_open_input(&vector_format_ctx, vector_src_filename, NULL, 0))
+  //   {
+  //     printf("Could not open file: %s", vector_src_filename);
+  //     return -1;
+  //   }
 
-    // Get stream info
-    if (0 > avformat_find_stream_info(vector_format_ctx, NULL))
-    {
-      printf("Could not get stream info: %d", avformat_find_stream_info(vector_format_ctx, NULL));
-      return -1;
-    }
+  //   // Get stream info
+  //   if (0 > avformat_find_stream_info(vector_format_ctx, NULL))
+  //   {
+  //     printf("Could not get stream info: %d", avformat_find_stream_info(vector_format_ctx, NULL));
+  //     return -1;
+  //   }
 
-    av_dump_format(vector_format_ctx, 0, vector_src_filename, 0);
+  //   av_dump_format(vector_format_ctx, 0, vector_src_filename, 0);
 
-    // Get video stream
-    {
-      int i;
-      int videoStream = -1;
+  //   // Get video stream
+  //   {
+  //     int i;
+  //     int videoStream = -1;
 
-      for (i = 0; i < vector_format_ctx->nb_streams; i++)
-      {
-        printf("streams %d\n", i);
-        printf("stream- %d\n", vector_format_ctx->streams[i]->codecpar->codec_id);
-        if (AVMEDIA_TYPE_VIDEO == vector_format_ctx->streams[i]->codecpar->codec_id)
-        {
-          videoStream = i;
-          printf("sup.    %d\n", i);
-          break;
-        }
-      }
-      if (-1 == videoStream)
-      {
-        vp_error("couldn't find video stream.");
-      }
-      printf("can't find videoStream but I just know it is 0, ignore %d\n", videoStream);
-    }
+  //     for (i = 0; i < vector_format_ctx->nb_streams; i++)
+  //     {
+  //       printf("streams %d\n", i);
+  //       printf("stream- %d\n", vector_format_ctx->streams[i]->codecpar->codec_id);
+  //       if (AVMEDIA_TYPE_VIDEO == vector_format_ctx->streams[i]->codecpar->codec_id)
+  //       {
+  //         videoStream = i;
+  //         printf("sup.    %d\n", i);
+  //         break;
+  //       }
+  //     }
+  //     if (-1 == videoStream)
+  //     {
+  //       vp_error("couldn't find video stream.");
+  //     }
+  //     printf("can't find videoStream but I just know it is 0, ignore %d\n", videoStream);
+  //   }
 
-    // Get Codec
-    vector_codec = avcodec_find_decoder(vector_format_ctx->streams[0]->codecpar->codec_id);
-    if (NULL == vector_codec)
-    {
-      vp_error("codec is wrong.");
-    }
+  //   // Get Codec
+  //   vector_codec = avcodec_find_decoder(vector_format_ctx->streams[0]->codecpar->codec_id);
+  //   if (NULL == vector_codec)
+  //   {
+  //     vp_error("codec is wrong.");
+  //   }
 
-    // Create Codec Context
-    vector_codec_context = avcodec_alloc_context3(vector_codec);
-    if ( 0 > avcodec_parameters_from_context(vector_format_ctx->streams[0]->codecpar, vector_codec_context))
-    {
-      vp_error("couldn't copy codec context.");
-    }
-    // Open Codec Context
-    if (0 > avcodec_open2(vector_codec_context, vector_codec, NULL))
-    {
-      vp_error("avcodec_open2 barfed");
-    }
-  }
+  //   // Create Codec Context
+  //   vector_codec_context = avcodec_alloc_context3(vector_codec);
+  //   if ( 0 > avcodec_parameters_from_context(vector_format_ctx->streams[0]->codecpar, vector_codec_context))
+  //   {
+  //     vp_error("couldn't copy codec context.");
+  //   }
+  //   // Open Codec Context
+  //   if (0 > avcodec_open2(vector_codec_context, vector_codec, NULL))
+  //   {
+  //     vp_error("avcodec_open2 barfed");
+  //   }
+  // }
 
   // ////////////////////////////////////   Image src
 
@@ -197,9 +197,10 @@ int main(int argc, char *argv[])
   AVFormatContext *output_format_ctx = NULL;
   AVCodecContext *output_codec_ctx = NULL;
   avformat_alloc_output_context2(&output_format_ctx, NULL, NULL, output_filename);
-  AVStream *in_stream = vector_format_ctx->streams[0];
-  AVStream *out_stream = avformat_new_stream(output_format_ctx, in_stream->codec->codec);
-  avcodec_copy_context(out_stream->codec, in_stream->codec);
+printf("wftf\n");
+  // AVStream *in_stream = vector_format_ctx->streams[0];
+  // AVStream *out_stream = avformat_new_stream(output_format_ctx, in_stream->codec->codec);
+  // avcodec_copy_context(out_stream->codec, in_stream->codec);
   avio_open(&output_format_ctx->pb, output_filename, AVIO_FLAG_WRITE);
 
   av_dump_format(output_format_ctx, 0, output_filename, 1);
@@ -302,7 +303,22 @@ int main(int argc, char *argv[])
 
   AVCodecParserContext *parser;
 
-  output_file = fopen(output_filename, "rb");
+
+
+  // clean up this file opening business
+
+
+  FILE *f;
+
+  // f = fopen(vector_src_filename, "rb");
+  f = fopen(image_src_filename, "rb");
+  // vector_file = fopen(vector_src_filename, "rb");
+  // output_file = fopen(vector_src_filename, "rb");
+  // if (!vector_file) {
+  printf("-------------------derp\n");
+  if (!f) {
+    printf("_ _ _ _ _ nope\n");
+  }
 
   parser = av_parser_init(vector_codec->id);
 
@@ -311,14 +327,17 @@ int main(int argc, char *argv[])
   printf("H E L L P\n");
   // rewind(vector_src_filename);
 
-  while (!feof(vector_src_filename))
+  while (!feof(f))
+  // while (!feof(vector_file))
   {
-    data_size = fread(inbuf, 1, INBUF_SIZE, vector_src_filename);
+    printf("helllooo\n");
+    data_size = fread(inbuf, 1, INBUF_SIZE, f);
     if(!data_size)
     {
       printf("no data_size\n");
       break;
     }
+    printf("data_size %d\n", data_size);
 
     // parser splits data into frames
     data = inbuf;
