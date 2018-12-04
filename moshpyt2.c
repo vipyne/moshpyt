@@ -3,8 +3,7 @@
 // http://dranger.com/ffmpeg/tutorial01.html
 
 #include <stdio.h>
-// #include <stdlib.h>
-// #include <string.h>
+#include <errno.h>
 
 #include <libavcodec/avcodec.h>
 #include <libavformat/avformat.h>
@@ -12,12 +11,15 @@
 
 #define INBUF_SIZE 4096
 
-static const char *vector_src_filename = NULL;
-static const char *image_src_filename = NULL;
-static const char *output_filename = NULL;
+FILE *f;
+
+const char *vector_src_filename = NULL;
+const char *image_src_filename = NULL;
+const char *output_filename = NULL;
 
 AVFrame *vector_frame = NULL;
 AVPacket *vector_pkt;
+
 
 int vp_error(char *message)
 {
@@ -127,65 +129,66 @@ int main(int argc, char *argv[])
   AVCodecContext *vector_codec_context_orig = NULL;
   AVCodec *vector_codec = NULL;
   AVFormatContext *vector_format_ctx = NULL;
-  // {
-  //   // Open file
-  //   if (0 != avformat_open_input(&vector_format_ctx, vector_src_filename, NULL, 0))
-  //   {
-  //     printf("Could not open file: %s", vector_src_filename);
-  //     return -1;
-  //   }
 
-  //   // Get stream info
-  //   if (0 > avformat_find_stream_info(vector_format_ctx, NULL))
-  //   {
-  //     printf("Could not get stream info: %d", avformat_find_stream_info(vector_format_ctx, NULL));
-  //     return -1;
-  //   }
+  {
+    // Open file
+    if (0 != avformat_open_input(&vector_format_ctx, vector_src_filename, NULL, 0))
+    {
+      printf("Could not open file: %s", vector_src_filename);
+      return -1;
+    }
 
-  //   av_dump_format(vector_format_ctx, 0, vector_src_filename, 0);
+    // Get stream info
+    if (0 > avformat_find_stream_info(vector_format_ctx, NULL))
+    {
+      printf("Could not get stream info: %d", avformat_find_stream_info(vector_format_ctx, NULL));
+      return -1;
+    }
 
-  //   // Get video stream
-  //   {
-  //     int i;
-  //     int videoStream = -1;
+    av_dump_format(vector_format_ctx, 0, vector_src_filename, 0);
 
-  //     for (i = 0; i < vector_format_ctx->nb_streams; i++)
-  //     {
-  //       printf("streams %d\n", i);
-  //       printf("stream- %d\n", vector_format_ctx->streams[i]->codecpar->codec_id);
-  //       if (AVMEDIA_TYPE_VIDEO == vector_format_ctx->streams[i]->codecpar->codec_id)
-  //       {
-  //         videoStream = i;
-  //         printf("sup.    %d\n", i);
-  //         break;
-  //       }
-  //     }
-  //     if (-1 == videoStream)
-  //     {
-  //       vp_error("couldn't find video stream.");
-  //     }
-  //     printf("can't find videoStream but I just know it is 0, ignore %d\n", videoStream);
-  //   }
+    // Get video stream
+    {
+      int i;
+      int videoStream = -1;
 
-  //   // Get Codec
-  //   vector_codec = avcodec_find_decoder(vector_format_ctx->streams[0]->codecpar->codec_id);
-  //   if (NULL == vector_codec)
-  //   {
-  //     vp_error("codec is wrong.");
-  //   }
+      for (i = 0; i < vector_format_ctx->nb_streams; i++)
+      {
+        printf("streams %d\n", i);
+        printf("stream- %d\n", vector_format_ctx->streams[i]->codecpar->codec_id);
+        if (AVMEDIA_TYPE_VIDEO == vector_format_ctx->streams[i]->codecpar->codec_id)
+        {
+          videoStream = i;
+          printf("sup.    %d\n", i);
+          break;
+        }
+      }
+      if (-1 == videoStream)
+      {
+        vp_error("couldn't find video stream.");
+      }
+      printf("can't find videoStream but I just know it is 0, ignore %d\n", videoStream);
+    }
 
-  //   // Create Codec Context
-  //   vector_codec_context = avcodec_alloc_context3(vector_codec);
-  //   if ( 0 > avcodec_parameters_from_context(vector_format_ctx->streams[0]->codecpar, vector_codec_context))
-  //   {
-  //     vp_error("couldn't copy codec context.");
-  //   }
-  //   // Open Codec Context
-  //   if (0 > avcodec_open2(vector_codec_context, vector_codec, NULL))
-  //   {
-  //     vp_error("avcodec_open2 barfed");
-  //   }
-  // }
+    // Get Codec
+    vector_codec = avcodec_find_decoder(vector_format_ctx->streams[0]->codecpar->codec_id);
+    if (NULL == vector_codec)
+    {
+      vp_error("codec is wrong.");
+    }
+
+    // Create Codec Context
+    vector_codec_context = avcodec_alloc_context3(vector_codec);
+    if ( 0 > avcodec_parameters_from_context(vector_format_ctx->streams[0]->codecpar, vector_codec_context))
+    {
+      vp_error("couldn't copy codec context.");
+    }
+    // Open Codec Context
+    if (0 > avcodec_open2(vector_codec_context, vector_codec, NULL))
+    {
+      vp_error("avcodec_open2 barfed");
+    }
+  }
 
   // ////////////////////////////////////   Image src
 
@@ -303,35 +306,27 @@ printf("wftf\n");
 
   AVCodecParserContext *parser;
 
-
-
-  // clean up this file opening business
-
-
-  FILE *f;
-
-  // f = fopen(vector_src_filename, "rb");
-  f = fopen(image_src_filename, "rb");
-  // vector_file = fopen(vector_src_filename, "rb");
-  // output_file = fopen(vector_src_filename, "rb");
-  // if (!vector_file) {
+  errno = 0;
+  vector_file = fopen(vector_src_filename, "rb");
   printf("-------------------derp\n");
-  if (!f) {
-    printf("_ _ _ _ _ nope\n");
+  if (!vector_file) {
+    printf("_ _ _ _ _ nope, %d\n", errno);
+    exit(11);
   }
 
+  printf("vector_codec->id %d\n", vector_codec->id);
   parser = av_parser_init(vector_codec->id);
+  if (!parser) {
+    printf("parser not found\n");
+    exit(1);
+  }
 
   int eret;
-
-  printf("H E L L P\n");
-  // rewind(vector_src_filename);
-
-  while (!feof(f))
-  // while (!feof(vector_file))
+  // while (!feof(f))
+  while (!feof(vector_file))
   {
     printf("helllooo\n");
-    data_size = fread(inbuf, 1, INBUF_SIZE, f);
+    data_size = fread(inbuf, 1, INBUF_SIZE, vector_file);
     if(!data_size)
     {
       printf("no data_size\n");
@@ -341,28 +336,34 @@ printf("wftf\n");
 
     // parser splits data into frames
     data = inbuf;
-    while (data_size > 0)
-    {
-      eret = av_parser_parse2(parser,
-                              vector_codec_context,
-                              &vector_pkt->data,
-                              &vector_pkt->size,
-                              data,
-                              data_size,
-                              AV_NOPTS_VALUE,
-                              AV_NOPTS_VALUE,
-                              0);
+    // while (data_size > 0)
+    // {
+    //   printf("while....\n");
+    //   eret = av_parser_parse2(parser,
+    //                           vector_codec_context,
+    //                           &vector_pkt->data,
+    //                           &vector_pkt->size,
+    //                           data,
+    //                           data_size,
+    //                           AV_NOPTS_VALUE,
+    //                           AV_NOPTS_VALUE,
+    //                           0);
+    //   if (eret < 0) {
+    //     fprintf(stderr, "Error while parsing\n");
+    //     exit(1);
+    //   }
+    //   printf("while.... 2\n");
 
-      data      += eret;
-      data_size -= eret;
+    //   data      += eret;
+    //   data_size -= eret;
 
-      if (vector_pkt->size)
-      {
-        printf("(+ + + + decccooooding _+ + + + +)\n");
-        vp_decode(vector_codec_context, vector_frame, vector_pkt, vector_src_filename, output_file);
-      }
+    //   if (vector_pkt->size)
+    //   {
+    //     printf("(+ + + + decccooooding _+ + + + +)\n");
+    //     vp_decode(vector_codec_context, vector_frame, vector_pkt, vector_src_filename, output_file);
+    //   }
 
-    }
+    // }
   }
 
 
@@ -407,6 +408,8 @@ printf("wftf\n");
   // Close video file
   avformat_close_input(&vector_format_ctx);
   // avformat_close_input(&image_format_ctx);
+
+  fclose(vector_file);
 
   return 0;
 }

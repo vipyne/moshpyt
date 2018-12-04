@@ -46,5 +46,8 @@ $ gcc moshpyt.c \
 -lavutil \
 -o moshthese
 
-$ ./moshthese ~/Movies/bobble_vector.mov ~/Movies/image.mov ~/desktop/moshpyt$(date +%s).mov
+$ ./moshthese ~/Movies/bobble_vector.mov ~/Movies/image.mov ~/desktop/moshpyt$(date +%s).mp4
 ```
+
+
+make mosh2 && ./moshthese2 ~/Movies/dance.mp4 ~/Movies/silliness.mp4 a_b_$(date +%s).mp4
