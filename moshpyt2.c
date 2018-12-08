@@ -20,7 +20,6 @@ const char *output_filename = NULL;
 AVFrame *vector_frame = NULL;
 AVPacket *vector_pkt;
 
-
 int vp_error(char *message)
 {
   printf("%s\n ", message);
@@ -108,11 +107,6 @@ static void vp_decode(AVCodecContext *codec_ctx,
   snprintf(buf, sizeof(buf), filename, codec_ctx->frame_number);
 
   vp_encode(codec_ctx, frame, pkt, output_file);
-  // pgm_save(frame->data[0],
-  //          frame->linesize[0],
-  //          frame->width,
-  //          frame->height,
-  //          buf);
 }
 
 int main(int argc, char *argv[])
@@ -200,7 +194,6 @@ int main(int argc, char *argv[])
   AVFormatContext *output_format_ctx = NULL;
   AVCodecContext *output_codec_ctx = NULL;
   avformat_alloc_output_context2(&output_format_ctx, NULL, NULL, output_filename);
-printf("wftf\n");
   // AVStream *in_stream = vector_format_ctx->streams[0];
   // AVStream *out_stream = avformat_new_stream(output_format_ctx, in_stream->codec->codec);
   // avcodec_copy_context(out_stream->codec, in_stream->codec);
@@ -215,7 +208,8 @@ printf("wftf\n");
   }
 
   AVCodec *output_codec;
-  output_codec = avcodec_find_encoder(AV_CODEC_ID_MPEG1VIDEO);
+  output_codec = avcodec_find_encoder(AV_CODEC_ID_H264);
+  // output_codec = avcodec_find_encoder(AV_CODEC_ID_MPEG1VIDEO);
   if (!output_codec)
   {
     printf("no codec found\n");
@@ -259,117 +253,106 @@ printf("wftf\n");
   vector_frame = av_frame_alloc();
   av_init_packet(&vector_pkt);
 
-
-  printf("(huh)\n");
-
   printf("narrrrrfffff____________________________________\n");
-  // for (i = 0; i < 30; i++)
-  // {
-  //   fflush(stdout);
+  for (i = 0; i < (30*1); i++)
+  {
+    fflush(stdout);
 
-  //   fb_ret = av_frame_make_writable(output_frame);
-  //   if (0 > fb_ret)
-  //   {
-  //     printf("frame could not be made writable.\n");
-  //     exit(1);
-  //   }
+    fb_ret = av_frame_make_writable(output_frame);
+    if (0 > fb_ret)
+    {
+      printf("frame could not be made writable.\n");
+      exit(1);
+    }
 
-  //   //  Y
-  //   for (y = 0; y < output_codec_ctx->height; y++)
-  //   {
-  //     for (x = 0; x < output_codec_ctx->width; x++)
-  //     {
-  //       output_frame->data[0][y * output_frame->linesize[0] + x] = x + y + i * 3;
-  //     }
-  //   }
+    //  Y
+    for (y = 0; y < output_codec_ctx->height; y++)
+    {
+      for (x = 0; x < output_codec_ctx->width; x++)
+      {
+        output_frame->data[0][y * output_frame->linesize[0] + x] = x + y + i * 3;
+      }
+    }
 
-  //   //  Cb & Cr
-  //   for (y = 0; y < output_codec_ctx->height / 2; y++)
-  //   {
-  //     for (x = 0; x < output_codec_ctx->width / 2; x++)
-  //     {
-  //       output_frame->data[1][y * output_frame->linesize[1] + x] = 128 + y + i * 2;
-  //       output_frame->data[2][y * output_frame->linesize[2] + x] = 64 + x + i * 5;
-  //     }
-  //   }
+    //  Cb & Cr
+    for (y = 0; y < output_codec_ctx->height / 2; y++)
+    {
+      for (x = 0; x < output_codec_ctx->width / 2; x++)
+      {
+        output_frame->data[1][y * output_frame->linesize[1] + x] = 128 + y + i * 2;
+        output_frame->data[2][y * output_frame->linesize[2] + x] = 64 + x + i * 5;
+      }
+    }
 
-  //   output_frame->pts = i;
+    output_frame->pts = i;
 
-  //   // printf("before encode___\n");
-  //   vp_encode(output_codec_ctx, output_frame, output_pkt, output_file);
-  //   // printf("after encode___\n");
+    vp_encode(output_codec_ctx, output_frame, output_pkt, output_file);
+  }
+
+  // uint8_t inbuf[INBUF_SIZE + AV_INPUT_BUFFER_PADDING_SIZE];
+  // uint8_t *data;
+  // size_t data_size;
+
+  // AVCodecParserContext *parser;
+
+  // errno = 0;
+  // vector_file = fopen(vector_src_filename, "rb");
+  // printf("-------------------derp\n");
+  // if (!vector_file) {
+  //   printf("_ _ _ _ _ nope, %d\n", errno);
+  //   exit(11);
   // }
 
-  uint8_t inbuf[INBUF_SIZE + AV_INPUT_BUFFER_PADDING_SIZE];
-  uint8_t *data;
-  size_t data_size;
+  // printf("vector_codec->id %d\n", vector_codec->id);
+  // parser = av_parser_init(vector_codec->id);
+  // if (!parser) {
+  //   printf("parser not found\n");
+  //   exit(1);
+  // }
 
-  AVCodecParserContext *parser;
+  // int eret;
+  // while (!feof(vector_file))
+  // {
+  //   printf("helllooo\n");
+  //   data_size = fread(inbuf, 1, INBUF_SIZE, vector_file);
+  //   if(!data_size)
+  //   {
+  //     printf("no data_size\n");
+  //     break;
+  //   }
+  //   printf("data_size %d\n", data_size);
 
-  errno = 0;
-  vector_file = fopen(vector_src_filename, "rb");
-  printf("-------------------derp\n");
-  if (!vector_file) {
-    printf("_ _ _ _ _ nope, %d\n", errno);
-    exit(11);
-  }
+  //   // parser splits data into frames
+  //   data = inbuf;
+  //   // while (data_size > 0)
+  //   // {
+  //   //   printf("while....\n");
+  //   //   eret = av_parser_parse2(parser,
+  //   //                           vector_codec_context,
+  //   //                           &vector_pkt->data,
+  //   //                           &vector_pkt->size,
+  //   //                           data,
+  //   //                           data_size,
+  //   //                           AV_NOPTS_VALUE,
+  //   //                           AV_NOPTS_VALUE,
+  //   //                           0);
+  //   //   if (eret < 0) {
+  //   //     fprintf(stderr, "Error while parsing\n");
+  //   //     exit(1);
+  //   //   }
+  //   //   printf("while.... 2\n");
 
-  printf("vector_codec->id %d\n", vector_codec->id);
-  parser = av_parser_init(vector_codec->id);
-  if (!parser) {
-    printf("parser not found\n");
-    exit(1);
-  }
+  //   //   data      += eret;
+  //   //   data_size -= eret;
 
-  int eret;
-  // while (!feof(f))
-  while (!feof(vector_file))
-  {
-    printf("helllooo\n");
-    data_size = fread(inbuf, 1, INBUF_SIZE, vector_file);
-    if(!data_size)
-    {
-      printf("no data_size\n");
-      break;
-    }
-    printf("data_size %d\n", data_size);
+  //   //   if (vector_pkt->size)
+  //   //   {
+  //   //     printf("(+ + + + decccooooding _+ + + + +)\n");
+  //   //     vp_decode(vector_codec_context, vector_frame, vector_pkt, vector_src_filename, output_file);
+  //   //   }
 
-    // parser splits data into frames
-    data = inbuf;
-    // while (data_size > 0)
-    // {
-    //   printf("while....\n");
-    //   eret = av_parser_parse2(parser,
-    //                           vector_codec_context,
-    //                           &vector_pkt->data,
-    //                           &vector_pkt->size,
-    //                           data,
-    //                           data_size,
-    //                           AV_NOPTS_VALUE,
-    //                           AV_NOPTS_VALUE,
-    //                           0);
-    //   if (eret < 0) {
-    //     fprintf(stderr, "Error while parsing\n");
-    //     exit(1);
-    //   }
-    //   printf("while.... 2\n");
-
-    //   data      += eret;
-    //   data_size -= eret;
-
-    //   if (vector_pkt->size)
-    //   {
-    //     printf("(+ + + + decccooooding _+ + + + +)\n");
-    //     vp_decode(vector_codec_context, vector_frame, vector_pkt, vector_src_filename, output_file);
-    //   }
-
-    // }
-  }
-
-
-  printf("GGRRRRRRrrrfffff____________________________________\n");
-
-
+  //   // }
+  // }
 
   printf("\n");
   printf("__________\n");
