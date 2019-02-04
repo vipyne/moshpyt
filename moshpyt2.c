@@ -17,6 +17,16 @@ const char *vector_src_filename = NULL;
 const char *image_src_filename = NULL;
 const char *out_filename = NULL;
 
+AVCodecContext *vector_ctx = NULL;
+AVPacket *vector_pkt;
+AVFrame *vector_frame;
+AVCodec *vector_codec = NULL;
+
+AVCodecContext *out_ctx = NULL;
+AVPacket *out_pkt;
+AVFrame *out_frame;
+AVCodec *out_codec;
+
 int vp_error(char *message)
 {
   printf("%s\n ", message);
@@ -72,7 +82,7 @@ static void vp_decode(AVCodecContext *codec_ctx,
   int ret;
 
   ret = avcodec_send_packet(codec_ctx, pkt);
-    fprintf(stderr, "HI__ret_ %d\n", ret);
+  fprintf(stderr, "avcodec_send_packet_ret_ %d\n", ret);
   if (0 > ret)
   {
     printf("error sending packet for decoding: %s\n", av_err2str(ret));
@@ -98,13 +108,13 @@ static void vp_decode(AVCodecContext *codec_ctx,
       printf("error during decoding\n");
       exit(1);
     }
+
+    printf("saving frame %3d\n", codec_ctx->frame_number);
+    fflush(stdout);
+    snprintf(buf, sizeof(buf), "%s-%d", filename, codec_ctx->frame_number);
+    vp_encode(out_ctx, frame, pkt, out_file);
   }
 
-  printf("saving frame %3d\n", codec_ctx->frame_number);
-  fflush(stdout);
-  snprintf(buf, sizeof(buf), filename, codec_ctx->frame_number);
-
-  vp_encode(codec_ctx, frame, pkt, out_file);
 }
 
 int main(int argc, char *argv[])
@@ -121,10 +131,6 @@ int main(int argc, char *argv[])
   ////////////////////////////////////   Motion vector src
   FILE *vector_file;
   AVCodecParserContext *vector_parser = NULL;
-  AVCodecContext *vector_ctx = NULL;
-  AVCodec *vector_codec = NULL;
-  AVFrame *vector_frame;
-  AVPacket *vector_pkt;
 
   uint8_t inbuf[INBUF_SIZE + AV_INPUT_BUFFER_PADDING_SIZE];
   uint8_t *data;
@@ -141,7 +147,8 @@ int main(int argc, char *argv[])
 
   memset(inbuf + INBUF_SIZE, 0, AV_INPUT_BUFFER_PADDING_SIZE);
 
-  vector_codec = avcodec_find_decoder(AV_CODEC_ID_H264);
+  vector_codec = avcodec_find_decoder(AV_CODEC_ID_MPEG1VIDEO);
+  // vector_codec = avcodec_find_decoder(AV_CODEC_ID_H264);
   if (!vector_codec) {
     fprintf(stderr, "codec not found \n");
     exit(1);
@@ -176,13 +183,7 @@ int main(int argc, char *argv[])
     exit(1);
   }
 
-
-
   ////////////////////////////////////   OUTPUT
-  AVPacket *out_pkt;
-  AVFrame *out_frame;
-  AVCodec *out_codec;
-  AVCodecContext *out_ctx = NULL;
 
   uint8_t endcode[] = { 0, 0, 1, 0xb7 };
 
@@ -273,8 +274,8 @@ int main(int argc, char *argv[])
     {
       for (x = 0; x < out_ctx->width / 2; x++)
       {
-        out_frame->data[1][y * out_frame->linesize[1] + x] = 128 + y + i * 2;
-        out_frame->data[2][y * out_frame->linesize[2] + x] = 64 + x + i * 5;
+        out_frame->data[1][y * out_frame->linesize[1] + x] = 127 + y + i * 2;
+        out_frame->data[2][y * out_frame->linesize[2] + x] = 63 + x + i * 5;
       }
     }
 
@@ -283,40 +284,41 @@ int main(int argc, char *argv[])
     vp_encode(out_ctx, out_frame, out_pkt, out_file);
   }
 
-  /////////////// vector frames
-  // while (!feof(vector_file)) {
-  //   data_size = fread(inbuf, 1, INBUF_SIZE, vector_file);
-  //   if (!data_size) {
-  //     break;
-  //   }
+  ///////////// vector frames
+  while (!feof(vector_file)) {
+    data_size = fread(inbuf, 1, INBUF_SIZE, vector_file);
+    if (!data_size) {
+      break;
+    }
 
-  //   data = inbuf;
-  //   while (0 < data_size) {
-  //     ret = av_parser_parse2(vector_parser,
-  //                             vector_ctx,
-  //                             &vector_pkt->data,
-  //                             &vector_pkt->size,
-  //                             data,
-  //                             data_size,
-  //                             AV_NOPTS_VALUE,
-  //                             AV_NOPTS_VALUE,
-  //                             0);
-  //     if (0 > ret) {
-  //       fprintf(stderr, "error while parsing\n");
-  //       exit(1);
-  //     }
-  //     data      += ret;
-  //     data_size -= ret;
+    data = inbuf;
+    while (0 < data_size) {
+      ret = av_parser_parse2(vector_parser,
+                              vector_ctx,
+                              &vector_pkt->data,
+                              &vector_pkt->size,
+                              data,
+                              data_size,
+                              AV_NOPTS_VALUE,
+                              AV_NOPTS_VALUE,
+                              0);
+      if (0 > ret) {
+        fprintf(stderr, "error while parsing\n");
+        exit(1);
+      }
+      data      += ret;
+      data_size -= ret;
+      printf("vector_pkt->size %d\n", vector_pkt->size);
 
-  //     if (vector_pkt->size) {
-  //       vp_decode(vector_ctx, out_frame, vector_pkt, out_filename, out_file);
-  //     }
-  //   }
-  // }
-
+      if (vector_pkt->size) {
+        // vp_decode(out_ctx, out_frame, vector_pkt, out_filename, out_file);
+        vp_decode(vector_ctx, out_frame, vector_pkt, out_filename, out_file);
+      }
+    }
+  }
 
   vp_encode(out_ctx, NULL, out_pkt, out_file);
-  vp_decode(vector_ctx, vector_frame, NULL, out_filename, out_file);
+  // vp_decode(out_ctx, out_frame, NULL, out_filename, out_file);
 
   fwrite(endcode, 1, sizeof(endcode), out_file);
   fclose(out_file);
