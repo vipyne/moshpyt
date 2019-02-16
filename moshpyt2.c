@@ -112,6 +112,10 @@ static void vp_decode(AVCodecContext *codec_ctx,
     printf("saving frame %3d\n", codec_ctx->frame_number);
     fflush(stdout);
     snprintf(buf, sizeof(buf), "%s-%d", filename, codec_ctx->frame_number);
+    AVFrameSideData *sd = av_frame_get_side_data(frame, AV_FRAME_DATA_MOTION_VECTORS);
+    if (sd) {
+      printf(" >              >       side data yup !!!!!!!\n");
+    }
     vp_encode(out_ctx, frame, pkt, out_file);
   }
 
@@ -195,8 +199,8 @@ int main(int argc, char *argv[])
     exit(1);
   }
 
-  out_codec = avcodec_find_encoder(AV_CODEC_ID_MPEG1VIDEO);
-  // out_codec = avcodec_find_encoder(AV_CODEC_ID_H264);
+  // out_codec = avcodec_find_encoder(AV_CODEC_ID_MPEG1VIDEO);
+  out_codec = avcodec_find_encoder(AV_CODEC_ID_H264);
   if (!out_codec) {
     printf("no out codec found\n");
     exit(1);
@@ -249,7 +253,7 @@ int main(int argc, char *argv[])
   }
 
   /////////////// image frames
-  for (i = 0; i < (30*2); i++)
+  for (i = 0; i < (30*8); i++)
   {
     fflush(stdout);
 
