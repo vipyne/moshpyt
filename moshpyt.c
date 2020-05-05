@@ -63,17 +63,19 @@ static int decode_packet(int *got_frame,
       return ret;
     }
 
-    if (*got_frame) {
+    if (*got_frame && *img_got_frame) {
       int i;
       AVFrameSideData *sd;
       AVFrameSideData *img_sd;
 
       video_frame_count++;
-      sd = av_frame_get_side_data(img_frame, AV_FRAME_DATA_MOTION_VECTORS);
-      if (sd) {
+      isd = av_frame_get_side_data(img_frame, AV_FRAME_DATA_MOTION_VECTORS);
+      sd = av_frame_get_side_data(got_frame, AV_FRAME_DATA_MOTION_VECTORS);
+      if (sd && isd) {
 
         AVMotionVector *mvs = (AVMotionVector *)sd->data;
-        AVMotionVector *img_mvs = (AVMotionVector *)img_frame->side_data[0]->data;
+        AVMotionVector *img_mvs = (AVMotionVector *)isd->data;
+        // AVMotionVector *img_mvs = (AVMotionVector *)img_frame->side_data[0]->data;
 
         for (i = 0; i < sd->size / sizeof(*mvs); i++) {
           AVMotionVector *mv = &mvs[i];
@@ -90,11 +92,29 @@ static int decode_packet(int *got_frame,
 
           img_frame->data[0] += 2;
         }
-
+      av_frame_unref(img_frame);
       } else {
           printf(".\n");
       }
+    } else {
+      printf("_\n");
     }
+  }
+  int x, y;
+    /* prepare a dummy image */
+  /* Y */
+  for (y = 0; y < 1080; y++) {
+      for (x = 0; x < 1920; x++) {
+          img_frame->data[0][y * img_frame->linesize[0] + x] = x + y + i * 3;
+      }
+  }
+
+  /* Cb and Cr */
+  for (y = 0; y < 1080/2; y++) {
+      for (x = 0; x < 1920/2; x++) {
+          img_frame->data[1][y * img_frame->linesize[1] + x] = 128 + y + i * 2;
+          img_frame->data[2][y * img_frame->linesize[2] + x] = 64 + x + i * 5;
+      }
   }
   write_to_pkt = img_pkt;
   av_interleaved_write_frame(ofmt_ctx, write_to_pkt);
@@ -138,6 +158,13 @@ static int open_codec_context(int *stream_idx, AVFormatContext *fmt_ctx, enum AV
 
   return 0;
 }
+
+
+////////////////
+////////////////
+// MAIN ////////
+////////////////
+////////////////
 
 int main(int argc, char **argv) {
   int ret = 0, got_frame;
@@ -297,11 +324,14 @@ int main(int argc, char **argv) {
       in_stream  = fmt_ctx->streams[vec_pkt.stream_index];
       out_stream = ofmt_ctx->streams[vec_pkt.stream_index];
       ret = decode_packet(&got_frame, 0, &vec_pkt, &img_pkt, ofmt_ctx, &img_got_frame, &write_to_pkt);
+      printf("red__ %d\n", ret);
+
       // avcode_send_packet(img_fmt_ctx, &write_to_pkt);  <--- use this API send_frame etc
       // https://www.ffmpeg.org/doxygen/trunk/group__lavc__encdec.html
 
-      write_to_pkt = vec_pkt;
-      av_interleaved_write_frame(ofmt_ctx, &write_to_pkt);
+      // write_to_pkt = vec_pkt;
+      // av_interleaved_write_frame(ofmt_ctx, &img_pkt);
+      // av_interleaved_write_frame(ofmt_ctx, &write_to_pkt);
 
 
       if (ret < 0)
